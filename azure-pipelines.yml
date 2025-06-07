@@ -3,4 +3,48 @@
 # Add steps that build, run tests, deploy, and more:
 # https://aka.ms/yaml
 
+trigger:
+- none
 
+pool:
+ vmImage: 'windows-latest'
+
+variables:
+  buildPlatform: 'Any-CPU'
+  buildConfiguration: 'Release'
+  solution: '**/RTCoffeeAPI.sln'
+  project: '**/RTCoffeeAPI.csproj'
+
+steps:
+
+- task: NugetToolInstaller@1
+  name: 'NugetToolInstaller'
+  displayName: 'Nuget tool installer'
+
+- task: NuGetCommand@2
+  inputs:
+    command: 'restore'
+    restoreSolution: '$(solution)'
+    feedsToUse: 'select'
+
+- task: DotNetCoreCLI@2
+  inputs:
+    azureSubscription: 'Azure subscription 1 (08ad7440-052e-4865-94f1-9d345f18fdf0)'
+    command: 'build'
+    projects: '$(solution)'
+    arguments: '--configuration $(BuildConfiguration)'
+
+- task: DotNetCoreCLI@2
+  inputs:
+    azureSubscription: 'Azure subscription 1 (08ad7440-052e-4865-94f1-9d345f18fdf0)'
+    command: 'publish'
+    publishWebProjects: false
+    projects: '$(project)'
+    arguments: '--configuration $(BuildConfiguration) --output $(Build.ArtifactStagingDirectory)'
+    zipAfterPublish: false
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
