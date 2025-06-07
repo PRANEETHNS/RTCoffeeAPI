@@ -1,8 +1,11 @@
-using RTCoffeeAPI.Services.Interfaces;
+﻿using RTCoffeeAPI.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 using RTCoffeeAPI.Controllers;
+using RTCoffeeAPI.Services;
+using System.Text.Json;
+using Microsoft.Extensions.Logging;
 namespace RTCoffeeAPI.Test
 {
     public class CoffeeControllerTest
@@ -17,8 +20,8 @@ namespace RTCoffeeAPI.Test
             mockService
                 .Setup(s => s.BrewCoffeeAsync())
                 .ReturnsAsync((StatusCodes.Status200OK, expectedJson));
-
-            var controller = new CoffeeController(mockService.Object);
+            var loggerMock = new Mock<ILogger<CoffeeService>>();
+            var controller = new CoffeeController(mockService.Object, loggerMock.Object);
 
             // Act
             var result = await controller.GetBrewCoffee();
@@ -38,8 +41,8 @@ namespace RTCoffeeAPI.Test
             mockService
                 .Setup(s => s.BrewCoffeeAsync())
                 .ReturnsAsync((StatusCodes.Status503ServiceUnavailable, (string?)null));
-
-            var controller = new CoffeeController(mockService.Object);
+            var loggerMock = new Mock<ILogger<CoffeeService>>();
+            var controller = new CoffeeController(mockService.Object, loggerMock.Object);
 
             // Act
             var result = await controller.GetBrewCoffee();
@@ -57,8 +60,8 @@ namespace RTCoffeeAPI.Test
             mockService
                 .Setup(s => s.BrewCoffeeAsync())
                 .ReturnsAsync((StatusCodes.Status418ImATeapot, (string?)null));
-
-            var controller = new CoffeeController(mockService.Object);
+            var loggerMock = new Mock<ILogger<CoffeeService>>();
+            var controller = new CoffeeController(mockService.Object, loggerMock.Object);
 
             // Act
             var result = await controller.GetBrewCoffee();
@@ -66,6 +69,30 @@ namespace RTCoffeeAPI.Test
             // Assert
             var statusResult = Assert.IsType<StatusCodeResult>(result);
             Assert.Equal(StatusCodes.Status418ImATeapot, statusResult.StatusCode);
+        }
+
+        [Theory]
+        [InlineData(30.0, "Your piping hot coffee is ready")]       
+        [InlineData(25.5, "Your piping hot coffee is ready")]      
+        [InlineData(30.1, "Your refreshing iced coffee is ready")] 
+        [InlineData(45.0, "Your refreshing iced coffee is ready")]
+        public async Task BrewCoffee_WeatherBranchesCorrectly(double testTemp, string outputMsg)
+        {                      
+            var weatherMock = new Mock<IWeatherService>();
+            weatherMock
+                .Setup(w => w.GetTemperatureAsync())
+                .ReturnsAsync(testTemp);
+            var loggerMock = new Mock<ILogger<CoffeeService>>();
+            var service = new CoffeeService(weatherMock.Object, loggerMock.Object);
+                        
+            var (status, json) = await service.BrewCoffeeAsync();
+
+            Assert.Equal(StatusCodes.Status200OK, status);
+            Assert.False(string.IsNullOrEmpty(json));
+
+            using var doc = JsonDocument.Parse(json);
+            var msg = doc.RootElement.GetProperty("message").GetString();
+            Assert.Equal(outputMsg, msg);
         }
     }
 }

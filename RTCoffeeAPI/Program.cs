@@ -1,48 +1,55 @@
 using RTCoffeeAPI.Services.Interfaces;
 using RTCoffeeAPI.Services;
 using Microsoft.AspNetCore.Mvc;
+using NLog;
+using NLog.Web;
 
-   
-    var builder = WebApplication.CreateBuilder(args);
+var logger = LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
 
-    // Add services to the container.
+var builder = WebApplication.CreateBuilder(args);
 
-    builder.Services.AddControllers();
-    // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-    builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddSwaggerGen();
+// Add services to the container.
 
-    // 1. Register versioning services:
-    builder.Services.AddApiVersioning(options =>
-    {
-        // Report API versions in response headers: "api-supported-versions" etc.
-        options.ReportApiVersions = true;
+builder.Services.AddControllers();
+// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
-        // Default to version 1.0 if no version is specified
-        options.AssumeDefaultVersionWhenUnspecified = true;
-        options.DefaultApiVersion = new ApiVersion(1, 0);
+// 1. Register versioning services:
+builder.Services.AddApiVersioning(options =>
+{
+    // Report API versions in response headers: "api-supported-versions" etc.
+    options.ReportApiVersions = true;
 
-        // Use URL segment versioning (e.g. /api/v1/...)
-        options.ApiVersionReader = new Microsoft.AspNetCore.Mvc.Versioning.UrlSegmentApiVersionReader();
-    });
+    // Default to version 1.0 if no version is specified
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.DefaultApiVersion = new ApiVersion(1, 0);
 
-    //Service registered limited to the run
-    builder.Services.AddScoped<ICoffeeService, CoffeeService>();
-       
-    var app = builder.Build();
+    // Use URL segment versioning (e.g. /api/v1/...)
+    options.ApiVersionReader = new Microsoft.AspNetCore.Mvc.Versioning.UrlSegmentApiVersionReader();
+});
 
-    // Configure the HTTP request pipeline.
-    if (app.Environment.IsDevelopment())
-    {
-        app.UseSwagger();
-        app.UseSwaggerUI();
-    }
+//Service registered limited to the run
+builder.Services.AddHttpClient<IWeatherService, WeatherService>();
+builder.Services.AddScoped<ICoffeeService, CoffeeService>();
 
-    app.UseHttpsRedirection();
+builder.Logging.ClearProviders();
+builder.Host.UseNLog();
 
-    app.UseAuthorization();
+var app = builder.Build();
 
-    app.MapControllers();
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
-    app.Run();
+app.UseHttpsRedirection();
+
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.Run();
 

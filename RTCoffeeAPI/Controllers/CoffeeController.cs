@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using RTCoffeeAPI.Services;
 using RTCoffeeAPI.Services.Interfaces;
 
 
@@ -6,21 +7,24 @@ namespace RTCoffeeAPI.Controllers
 {
     [ApiController]
     [ApiVersion("1.0")]
+    [ApiVersion("2.0")]
     [Route("api/v{version:apiVersion}/brew-coffee")]
     public class CoffeeController : ControllerBase
     {
         private readonly ICoffeeService _coffeeService;
+        private readonly ILogger<CoffeeService> _log;
 
-        public CoffeeController(ICoffeeService coffeeService)
+        public CoffeeController(ICoffeeService coffeeService, ILogger<CoffeeService> log)
         {
             _coffeeService = coffeeService;
+            _log = log;
         }
 
         /// <summary>
-        /// HTTPGET for getting Brewed Coffee
+        /// HTTPGET for getting Brewed Coffee V1
         /// </summary>
-        /// <returns>Returns either 200 / 418 / 503</returns>
-        [HttpGet]
+        /// <returns>Returns either 200 / 418 / 503</returns>       
+        [HttpGet]        
         public async Task<IActionResult> GetBrewCoffee()
         {
             try
@@ -44,10 +48,10 @@ namespace RTCoffeeAPI.Controllers
                 }
             }
             catch (Exception ex)
-            {              
-
+            {
+                _log.LogError(ex.InnerException.ToString());
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
-        }
+        }        
     }
 }
